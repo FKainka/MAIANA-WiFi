@@ -937,12 +937,23 @@ void startClientWiFi() {
 
 void stopClientWiFi() { stopWifi(); }
 
-void setupAPWiFi() { WiFi.mode(WIFI_AP); }
+void setupAPWiFi()
+{
+    WiFi.mode(WIFI_AP);
+    // TODO Use other config for Access Point
+    //  WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
+    Serial.println("APWiFi setuped");
+}
 
-void startAPWiFi() {
+void startAPWiFi()
+{
     WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
+    // WiFi.mode(WIFI_AP);
     startNetwork();
     startWebServer();
+    Serial.println("APWiFi started");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.softAPIP().toString());
 }
 
 void stopAPWiFi() { stopWifi(); }
@@ -1378,6 +1389,7 @@ void setup() {
     Serial.begin(38400);
     Serial2.begin(38400);  //, SERIAL_8N1, RXD2, TXD2);
     requestAISInfomation();
+    Serial.println("COMPILE INFO: " __DATE__ " " __TIME__);
 
     Serial.println("MAIANA-WiFi AIS Transponder forwarder started");
 

@@ -1,6 +1,6 @@
 {
     "name": "MAIANA-Wifi",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "builds": [
         {
             "chipFamily": "ESP32",

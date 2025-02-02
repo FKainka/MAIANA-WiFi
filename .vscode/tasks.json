@@ -12,7 +12,7 @@
       "label": "Build Firmware",
       "type": "shell",
       "command": "C:\\Users\\HP\\.platformio\\penv\\Scripts\\platformio.exe",
-      "args": ["run", "--environment", "wokwi_dev","--disable-auto-clean","--jobs", "6"],
+      "args": ["run", "--environment", "wokwi_dev","--disable-auto-clean","--jobs", "8"],
       "group": { "kind": "build", "isDefault": true }
     },
     {
