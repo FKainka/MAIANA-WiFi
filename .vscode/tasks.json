@@ -1,14 +1,75 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "PlatformIO",
-			"task": "Build release firmware (wemos_d1_mini32)",
-			"problemMatcher": [
-				"$platformio"
-			],
-			"group": "build",
-			"label": "PlatformIO: Build release firmware (wemos_d1_mini32)"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "PlatformIO",
+      "task": "Build Wokwi Dev",
+      "problemMatcher": ["$platformio"],
+      "group": "build",
+      "label": "PlatformIO: Build release firmware (wemos_d1_mini32)"
+    },
+    {
+      "label": "Build Firmware",
+      "type": "shell",
+      "command": "C:\\Users\\HP\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": ["run", "--environment", "wokwi_dev","--disable-auto-clean","--jobs", "6"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Build Filesystem",
+      "type": "shell",
+      "command": "C:\\Users\\HP\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": [
+        "run",
+        "--target",
+        "buildfs",
+        "--environment",
+        "wokwi_dev",
+        "--disable-auto-clean"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Merge Firmware + Filesystem",
+      "type": "shell",
+      "command": "esptool",
+      "args": [
+        "--chip",
+        "esp32",
+        "merge_bin",
+        "-o",
+        "firmware_merged.bin",
+        "--flash_mode",
+        "dio",
+        "--flash_freq",
+        "40m",
+        "--flash_size",
+        "4MB",
+        "0x1000",
+        ".pio/build/wokwi_dev/bootloader.bin",
+        "0x8000",
+        ".pio/build/wokwi_dev/partitions.bin",
+        "0x10000",
+        ".pio/build/wokwi_dev/firmware.bin",
+        "0x290000",
+        ".pio/build/wokwi_dev/spiffs.bin"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Wokwi Simulator",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Build Firmware",
+        "Build Filesystem",
+        "Merge Firmware + Filesystem"
+      ],
+      "command": "${command:wokwi-vscode.start}",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
 }
