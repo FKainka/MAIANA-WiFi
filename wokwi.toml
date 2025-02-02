@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+firmware = 'docu/merged-firmware.bin'
+elf = '.pio/build/wemos_d1_mini32/firmware.elf'
+
+# Forward http://localhost:8180 to port 80 on the simulated ESP32:
+[[net.forward]]
+from = "localhost:8180"
+to = "target:80"

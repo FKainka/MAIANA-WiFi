@@ -135,8 +135,8 @@ bool txRefreshPending = true;
 static std::vector<AsyncClient *> clients;
 
 // Set config WifI credentials
-#define CONFIG_SSID "MAIANA"
-#define CONFIG_PASS "MAIANA-AIS"
+#define CONFIG_SSID "Wokwi-GUEST"
+#define CONFIG_PASS ""
 #define WIFI_SETTINGS_FILE "/wifi.json"
 #define PROTOCOL_SETTINGS_FILE "/protocol.json"
 #define APP_SETTINGS_FILE "/app.json"
@@ -948,7 +948,7 @@ void startAPWiFi() {
 void stopAPWiFi() { stopWifi(); }
 
 void setupConfigWiFi() {
-    // WiFi.mode(WIFI_STA);
+   WiFi.mode(WIFI_STA);
 }
 
 void startConfigWiFi() {
@@ -1386,7 +1386,7 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     setupFileSystem();
-    // setupConfigWiFi();
+    setupConfigWiFi();
     // startConfigWiFi();
     // setupWebServer();
     readWifiFromFile();
