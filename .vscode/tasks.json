@@ -2,11 +2,11 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "PlatformIO: Build release firmware (wemos_d1_mini32)",
       "type": "PlatformIO",
-      "task": "Build Wokwi Dev",
+      "task": "run",
       "problemMatcher": ["$platformio"],
       "group": "build",
-      "label": "PlatformIO: Build release firmware (wemos_d1_mini32)"
     },
     {
       "label": "Build Firmware",
@@ -59,6 +59,8 @@
     },
     {
       "label": "Run Wokwi Simulator",
+      "detail": "Run the Wokwi Simulator",
+      "icon": {"id": "run-all", "color": "terminal.ansiGreen"},
       "dependsOrder": "sequence",
       "dependsOn": [
         "Build Firmware",
