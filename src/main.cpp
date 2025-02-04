@@ -939,16 +939,16 @@ void stopClientWiFi() { stopWifi(); }
 
 void setupAPWiFi()
 {
-    WiFi.mode(WIFI_AP);
+    //WiFi.mode(WIFI_AP);
     // TODO Use other config for Access Point
-    //  WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
+    WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
     Serial.println("APWiFi setuped");
 }
 
 void startAPWiFi()
 {
-    WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
-    // WiFi.mode(WIFI_AP);
+    //WiFi.softAP(CONFIG_SSID, CONFIG_PASS);
+    WiFi.mode(WIFI_AP);
     startNetwork();
     startWebServer();
     Serial.println("APWiFi started");
