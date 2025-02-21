@@ -32,7 +32,7 @@
     {
       "label": "Merge Firmware + Filesystem",
       "type": "shell",
-      "command": "esptool",
+      "command": "esptool.py",
       "args": [
         "--chip",
         "esp32",

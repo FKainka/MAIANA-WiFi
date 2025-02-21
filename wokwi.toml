@@ -3,6 +3,7 @@ version = 1
 firmware = 'firmware_merged.bin'
 #'docu/merged-firmware.bin'
 elf = '.pio/build/wemos_d1_mini32/firmware.elf'
+gdbServerPort=3333
 
 # Forward http://localhost:8180 to port 80 on the simulated ESP32:
 [[net.forward]]

@@ -18,6 +18,8 @@
 
 #include "helperfunctions.h"
 
+#define LED_BUILTIN 2
+
 #ifdef FAKEAIS  // Adds demo messages. TODO: enable/disable via config menu
 #include "fakedata.h"
 long timerloop = millis() + 10000L;
@@ -32,6 +34,7 @@ long ws_queue_loop = millis() + 1000L;
 #define WS_MAX_MESSAGES 20
 
 #endif
+
 
 bool debug_logging = false;
 
@@ -1018,7 +1021,7 @@ void stopConfigMode() {
             startAPWiFi();
             Serial.println("APWiFi started");
         }
-        digitalWrite(BUILTIN_LED, LOW);
+        digitalWrite(LED_BUILTIN, LOW);
         configMode = false;
     }
 }
@@ -1081,7 +1084,7 @@ void configPoll() {
     if (configMode) {
         if ((millis() - blinkMillis) / 1000 >= BLINK_SEC) {
             blinkState = !blinkState;
-            digitalWrite(BUILTIN_LED, blinkState);
+            digitalWrite(LED_BUILTIN, blinkState);
             requestAISInfomation();
             blinkMillis = millis();
         }
