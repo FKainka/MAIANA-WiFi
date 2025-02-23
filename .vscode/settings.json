@@ -1,0 +1,8 @@
+{
+  "terminal.integrated.env.windows": {
+    "PLATFORMIO_CMD": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe"
+  },
+  "terminal.integrated.env.linux": {
+    "PLATFORMIO_CMD": "~/.platformio/penv/bin/platformio"
+  }
+}

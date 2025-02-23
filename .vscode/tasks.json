@@ -2,23 +2,35 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "PlatformIO: Build release firmware (wemos_d1_mini32)",
-      "type": "PlatformIO",
-      "task": "run",
-      "problemMatcher": ["$platformio"],
-      "group": "build",
-    },
-    {
       "label": "Build Firmware",
       "type": "shell",
-      "command": "C:\\Users\\HP\\.platformio\\penv\\Scripts\\platformio.exe",
-      "args": ["run", "--environment", "wokwi_dev","--disable-auto-clean","--jobs", "8"],
-      "group": { "kind": "build", "isDefault": true }
+      "windows": {
+        "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe"
+      },
+      "linux": {
+        "command": "~/.platformio/penv/bin/platformio"
+      },
+      "args": [
+        "run",
+        "--environment",
+        "wokwi_dev",
+        "--disable-auto-clean"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "icon": {
+        "id": "tools",
+        "color": "terminal.ansiBlue"
+      },
     },
     {
       "label": "Build Filesystem",
       "type": "shell",
-      "command": "C:\\Users\\HP\\.platformio\\penv\\Scripts\\platformio.exe",
+      "windows": {
+        "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe"
+      },
+      "linux": {
+        "command": "~/.platformio/penv/bin/platformio"
+      },
       "args": [
         "run",
         "--target",
@@ -27,7 +39,11 @@
         "wokwi_dev",
         "--disable-auto-clean"
       ],
-      "group": "build"
+      "group": "build",
+      "icon": {
+        "id": "database",
+        "color": "terminal.ansiYellow"
+      },
     },
     {
       "label": "Merge Firmware + Filesystem",
@@ -55,12 +71,19 @@
         ".pio/build/wokwi_dev/spiffs.bin"
       ],
       "group": "build",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "icon": {
+        "id": "merge",
+        "color": "terminal.ansiMagenta"
+      },
     },
     {
       "label": "Run Wokwi Simulator",
       "detail": "Run the Wokwi Simulator",
-      "icon": {"id": "run-all", "color": "terminal.ansiGreen"},
+      "icon": {
+        "id": "play-circle",
+        "color": "terminal.ansiGreen"
+      },
       "dependsOrder": "sequence",
       "dependsOn": [
         "Build Firmware",
@@ -72,6 +95,6 @@
         "kind": "build",
         "isDefault": true
       }
-    }
+    },
   ]
 }
