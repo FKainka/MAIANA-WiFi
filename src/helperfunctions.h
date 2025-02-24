@@ -42,4 +42,5 @@ bool writeJsonFile(String filename, JsonDocument &doc);
 /// @return Returns the extracted value as a string.
 String getValue(String data, char separator, int index);
 
+bool portIsValid(int port) ;
 #endif /* HELPERFUNCTIONS_H */

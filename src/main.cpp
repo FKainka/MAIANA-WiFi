@@ -10,13 +10,13 @@
 #include <SPIFFS.h>
 #include <WiFi.h>
 
-// #include <AsyncTCP.h>
-
 #include <AsyncTCP.h>
 #include <AsyncUDP.h>
 #include <ESPAsyncWebServer.h>
 
 #include "helperfunctions.h"
+#include "webserver.h"
+#include "config.h"
 
 #define LED_BUILTIN 2
 
@@ -25,18 +25,6 @@
 long timerloop = millis() + 10000L;
 #endif
 
-#ifdef AISMEMORY  // Stores the latest10 minutes of unique AIS messages and
-                  // resend on connect of a client
-#include "aisstore.h"
-uint32_t ws_queue_client = 0;
-long ws_queue_msgId = -1;
-long ws_queue_loop = millis() + 1000L;
-#define WS_MAX_MESSAGES 20
-
-#endif
-
-
-bool debug_logging = false;
 
 #define DEBUG(X)            \
     Serial.print(__LINE__); \
@@ -47,77 +35,13 @@ bool debug_logging = false;
 
 // general
 
-struct wifi {
-    String type;
-    String ssid;
-    String password;
-} wifiSettings;
 
-struct protocol {
-    bool tcp;
-    int tcpPort;
-    bool udp;
-    int udpPort;
-    bool websocket;
-    int websocketPort;
-} protocolSettings;
-
-struct station {
-    String mmsi;
-    String callsign;
-    String vesselname;
-    int vesseltype;
-    int loa;
-    int beam;
-    int portoffset;
-    int bowoffset;
-} stationSettings;
-
-struct system {
-    String hardwareRevision;
-    String firmwareRevision;
-    String serialNumber;
-    String MCUtype;
-    String breakoutGeneration;
-    String bootloader;
-} systemSettings;
-
-struct info {
-    String ip;
-    String configTimeout;
-    String time;
-    String date;
-    String mode;
-    long wifiReconnects;
-} infoState;
-
-struct txState {
-    String hardwarePresent;
-    String hardwareSwitch;
-    String softwareSwitch;
-    String stationData;
-    String status;
-    String channelALast;
-    String channelALastTime;
-    String channelALastDate;
-    String channelBLast;
-    String channelBLastTime;
-    String channelBLastDate;
-    String channelANoise;
-    String channelBNoise;
-} txState;
-
-struct appSettings {
-    bool demoMode;
-    bool corsHeader;
-    bool aisMemory;
-} appSettings;
 
 // switch
-#define SWITCH 4
+// #define SWITCH 4
 
 // in seconds
-#define CONFIG_TIMEOUT 300
+// #define CONFIG_TIMEOUT 300
 bool configMode = false;
 // timestamp of the last time the switch was pressed
 unsigned long configStarted = 0;
@@ -125,69 +49,28 @@ unsigned long configStarted = 0;
 #define BLINK_SEC 2
 unsigned long blinkMillis = 0;
 bool blinkState = false;
-bool mDNSOK = false;
-bool networkOK = false;
-bool udpForwardOK = false;
-bool tcpForwardOK = false;
-bool websocketOk = false;
-
-bool systemRefreshPending = true;
-bool stationRefreshPending = true;
-bool txRefreshPending = true;
 
 static std::vector<AsyncClient *> clients;
 
-// Set config WifI credentials
-#define CONFIG_SSID "Wokwi-GUEST"
-#define CONFIG_PASS ""
-#define WIFI_SETTINGS_FILE "/wifi.json"
-#define PROTOCOL_SETTINGS_FILE "/protocol.json"
-#define APP_SETTINGS_FILE "/app.json"
-
-AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
+// Set config WiFi credentials
+// #define CONFIG_SSID "Wokwi-GUEST"
+// #define CONFIG_PASS ""
+// #define WIFI_SETTINGS_FILE "/wifi.json"
+// #define PROTOCOL_SETTINGS_FILE "/protocol.json"
+// #define APP_SETTINGS_FILE "/app.json"
 
 AsyncUDP udp;
 std::unique_ptr<AsyncServer> tcp;
 
-#define NMEALEN 84
+// #define NMEALEN 84
 char nmeaLine[NMEALEN] = "";
 uint8_t nmeaPos = 0;
 
-#define WIFICONFIGLINELEN 100
+// #define WIFICONFIGLINELEN 100
 char wifiConfigLine[WIFICONFIGLINELEN] = "";
 uint8_t wifiConfigPos = 0;
 bool wifiConfigLineReceiving = false;
 
-const char *ssidWebserver = "MAIANA";
-const char *passwordWebserver = "MAIANA-AIS";
-
-const char *PARAM_TYPE = "type";
-const char *PARAM_SSID = "ssid";
-const char *PARAM_PASSWORD = "password";
-
-const char *PARAM_TCP_ENABLE = "tcp";
-const char *PARAM_TCP_PORT = "tcpport";
-const char *PARAM_UDP_ENABLE = "udp";
-const char *PARAM_UDP_PORT = "udpport";
-const char *PARAM_WEBSOCKET_ENABLE = "websocket";
-const char *PARAM_WEBSOCKET_PORT = "websocketport";
-
-const char *PARAM_MMSI = "mmsi";
-const char *PARAM_CALLSIGN = "callsign";
-const char *PARAM_VESSELNAME = "vesselname";
-const char *PARAM_VESSELTYPE = "vesseltype";
-const char *PARAM_LOA = "loa";
-const char *PARAM_BEAM = "beam";
-const char *PARAM_PORTOFFSET = "portoffset";
-const char *PARAM_BOWOFFSET = "bowoffset";
-const char *PARAM_TOGGLE = "softtxtoggle";
-
-const char *PARAM_VERSION = "version";
-const char *PARAM_BUILD = "build";
-const char *PARAM_DEMOMODE = "demoMode";
-const char *PARAM_CORS = "corsHeader";
-const char *PARAM_AISMEM = "aisMemory";
 
 //---------------functions-----------------------------
 
@@ -201,17 +84,6 @@ void noiseFloorToStruct(String input);
 void checkLine(String line);
 void testParsing();
 void addOptionalCORSHeader(AsyncResponseStream *response);
-void handleInfo(AsyncWebServerRequest *request);
-void handleTXstate(AsyncWebServerRequest *request);
-void handleScan(AsyncWebServerRequest *request);
-void handleWifi(AsyncWebServerRequest *request);
-void handleProtocol(AsyncWebServerRequest *request);
-void handleStation(AsyncWebServerRequest *request);
-void handleSystem(AsyncWebServerRequest *request);
-void notFound(AsyncWebServerRequest *request);
-void setupWebServer();
-void startWebServer();
-void initWebSocket();
 void setupNMEAForward();
 void startNMEAForward();
 void stopNMEAForward();
@@ -238,7 +110,7 @@ void safeWifiToFile();
 void safeProtocolToFile();
 void readWifiFromFile();
 bool readProtocolFromFile();
-bool portIsValid(int port) { return port > 0 && port < 65536; }
+
 void websocketSend(const char *line);
 void systemRefresh();
 void stationRefresh();
@@ -400,6 +272,21 @@ void testParsing() {
     Serial.print("infoState.configTimeout = ");
     Serial.println(infoState.configTimeout);
     Serial.print("infoState.time = ");
+    Serial.println(protocolSettings.udp);
+    Serial.print("protocolSettings.udpPort = ");
+    Serial.println(protocolSettings.udpPort);
+    Serial.print("protocolSettings.websocket = ");
+    Serial.println(protocolSettings.websocket);
+    Serial.print("protocolSettings.websocketPort = ");
+    Serial.println(protocolSettings.websocketPort);
+
+    Serial.println("====================");
+
+    Serial.print("infoState.ip = ");
+    Serial.println(infoState.ip);
+    Serial.print("infoState.configTimeout = ");
+    Serial.println(infoState.configTimeout);
+    Serial.print("infoState.time = ");
     Serial.println(infoState.time);
     Serial.print("infoState.date = ");
     Serial.println(infoState.date);
@@ -468,340 +355,6 @@ void addOptionalCORSHeader(AsyncResponseStream *response) {
 #endif
 }
 
-// webserver
-void handleInfo(AsyncWebServerRequest *request) {
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json["ip"] = infoState.ip;
-    json["configTimeout"] = infoState.configTimeout;
-    json["time"] = infoState.time;
-    json["date"] = infoState.date;
-    json["signal"] = WiFi.RSSI();
-    json["wifiReconnects"] = infoState.wifiReconnects;
-    json["mode"] = infoState.mode;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-}
-
-void handleTXstate(AsyncWebServerRequest *request) {
-    if (request->hasParam(PARAM_TOGGLE)) {
-        if (txState.softwareSwitch) {
-            Serial2.print("tx off\r\n");
-        } else {
-            Serial2.print("tx on\r\n");
-        }
-        txRefreshPending = true;
-    }
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json["hardwarePresent"] = txState.hardwarePresent;
-    json["hardwareSwitch"] = txState.hardwareSwitch;
-    json["softwareSwitch"] = txState.softwareSwitch;
-    json["stationData"] = txState.stationData;
-    json["status"] = txState.status;
-    json["channelALast"] = txState.channelALast;
-    json["channelALastTime"] = txState.channelALastTime;
-    json["channelALastDate"] = txState.channelALastDate;
-    json["channelBLast"] = txState.channelBLast;
-    json["channelBLastTime"] = txState.channelBLastTime;
-    json["channelBLastDate"] = txState.channelBLastDate;
-    json["channelANoise"] = txState.channelANoise;
-    json["channelBNoise"] = txState.channelBNoise;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-}
-
-void handleScan(AsyncWebServerRequest *request) {
-    String json = "[";
-    int n = WiFi.scanComplete();
-    if (n == -2) {
-        WiFi.scanNetworks(true);
-    } else if (n) {
-        for (int i = 0; i < n; ++i) {
-            if (i) {
-                json += ",";
-            }
-            json += "{";
-            json += "\"rssi\":" + String(WiFi.RSSI(i));
-            json += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
-            json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
-            json += ",\"channel\":" + String(WiFi.channel(i));
-            json += ",\"secure\":" + String(WiFi.encryptionType(i));
-            json += "}";
-        }
-        WiFi.scanDelete();
-        if (WiFi.scanComplete() == -2) {
-            WiFi.scanNetworks(true);
-        }
-    }
-    json += "]";
-    request->send(200, "application/json", json);
-    json = String();
-}
-
-void handleWifi(AsyncWebServerRequest *request) {
-    if (request->hasParam(PARAM_TYPE) && request->hasParam(PARAM_SSID) &&
-        request->hasParam(PARAM_PASSWORD)) {
-        wifiSettings.type = request->getParam(PARAM_TYPE)->value();
-        wifiSettings.ssid = request->getParam(PARAM_SSID)->value();
-        wifiSettings.password = request->getParam(PARAM_PASSWORD)->value();
-        startConfigWiFi();
-        startWebServer();
-    }
-
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json[PARAM_TYPE] = wifiSettings.type;
-    json[PARAM_SSID] = wifiSettings.ssid;
-    json[PARAM_PASSWORD] = wifiSettings.password;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-    if (request->params() == 3) {
-        writeJsonFile(WIFI_SETTINGS_FILE, json);
-    }
-}
-
-void handleApp(AsyncWebServerRequest *request) {
-    if (request->hasParam(PARAM_DEMOMODE)) {
-        appSettings.demoMode =
-            request->getParam(PARAM_DEMOMODE)->value().equals("true");
-    }
-    if (request->hasParam(PARAM_CORS)) {
-        appSettings.corsHeader =
-            request->getParam(PARAM_CORS)->value().equals("true");
-    }
-    if (request->hasParam(PARAM_AISMEM)) {
-        appSettings.aisMemory =
-            request->getParam(PARAM_AISMEM)->value().equals("true");
-    }
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json[PARAM_VERSION] = FIRMWARE_VERSION;
-    json[PARAM_BUILD] = FIRMWARE_BUILD;
-#ifdef FAKEAIS
-    json[PARAM_DEMOMODE] = appSettings.demoMode;
-#else
-    json[PARAM_DEMOMODE] = false;
-#endif
-#ifdef CORS_HEADER
-    json[PARAM_CORS] = appSettings.corsHeader;
-#else
-    json[PARAM_CORS] = false;
-#endif
-#ifdef AISMEMORY
-    json[PARAM_AISMEM] = appSettings.aisMemory;
-#else
-    json[PARAM_AISMEM] = false;
-#endif
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-    if (request->params() == 3) {
-        writeJsonFile(APP_SETTINGS_FILE, json);
-    }
-}
-
-void handleProtocol(AsyncWebServerRequest *request) {
-    if (request->hasParam(PARAM_TCP_ENABLE) &&
-        request->hasParam(PARAM_TCP_PORT)) {
-        protocolSettings.tcp =
-            request->getParam(PARAM_TCP_ENABLE)->value().equals("true");
-        auto port = request->getParam(PARAM_TCP_PORT)->value().toInt();
-        if (portIsValid(port)) {
-            protocolSettings.tcpPort = port;
-        }
-    }
-    if (request->hasParam(PARAM_UDP_ENABLE) &&
-        request->hasParam(PARAM_UDP_PORT)) {
-        protocolSettings.udp =
-            request->getParam(PARAM_UDP_ENABLE)->value().equals("true");
-        auto port = request->getParam(PARAM_UDP_PORT)->value().toInt();
-        if (portIsValid(port)) {
-            protocolSettings.udpPort = port;
-        }
-    }
-    if (request->hasParam(PARAM_WEBSOCKET_ENABLE) &&
-        request->hasParam(PARAM_WEBSOCKET_PORT)) {
-        protocolSettings.websocket =
-            request->getParam(PARAM_WEBSOCKET_ENABLE)->value().equals("true");
-        auto port = request->getParam(PARAM_WEBSOCKET_PORT)->value().toInt();
-        if (portIsValid(port)) {
-            protocolSettings.websocketPort = port;
-        }
-    }
-
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json[PARAM_TCP_ENABLE] = protocolSettings.tcp;
-    json[PARAM_TCP_PORT] = protocolSettings.tcpPort;
-    json[PARAM_UDP_ENABLE] = protocolSettings.udp;
-    json[PARAM_UDP_PORT] = protocolSettings.udpPort;
-    json[PARAM_WEBSOCKET_ENABLE] = protocolSettings.websocket;
-    json[PARAM_WEBSOCKET_PORT] = protocolSettings.websocketPort;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-    if (request->params() == 6) {
-        writeJsonFile(PROTOCOL_SETTINGS_FILE, json);
-        stopNMEAForward();
-        startNMEAForward();
-    }
-}
-
-void handleStation(AsyncWebServerRequest *request) {
-    if (request->hasParam(PARAM_MMSI) && request->hasParam(PARAM_CALLSIGN) &&
-        request->hasParam(PARAM_VESSELNAME) &&
-        request->hasParam(PARAM_VESSELTYPE) && request->hasParam(PARAM_LOA) &&
-        request->hasParam(PARAM_BEAM) && request->hasParam(PARAM_PORTOFFSET) &&
-        request->hasParam(PARAM_BOWOFFSET)) {
-        stationSettings.mmsi = request->getParam(PARAM_MMSI)->value();
-        stationSettings.callsign = request->getParam(PARAM_CALLSIGN)->value();
-        stationSettings.vesselname =
-            request->getParam(PARAM_VESSELNAME)->value();
-        stationSettings.vesseltype =
-            request->getParam(PARAM_VESSELTYPE)->value().toInt();
-        stationSettings.loa = request->getParam(PARAM_LOA)->value().toInt();
-        stationSettings.beam = request->getParam(PARAM_BEAM)->value().toInt();
-        stationSettings.bowoffset =
-            request->getParam(PARAM_BOWOFFSET)->value().toInt();
-        stationSettings.portoffset =
-            request->getParam(PARAM_PORTOFFSET)->value().toInt();
-
-        Serial2.println(
-            "station " + stationSettings.mmsi + "," + stationSettings.mmsi +
-            "," + stationSettings.callsign + "," + stationSettings.vesselname +
-            "," + stationSettings.vesseltype + "," + stationSettings.loa + "," +
-            stationSettings.beam + "," + stationSettings.bowoffset + "," +
-            stationSettings.portoffset);
-    }
-    stationRefreshPending = true;
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json["mmsi"] = stationSettings.mmsi;
-    json["callsign"] = stationSettings.callsign;
-    json["vesselname"] = stationSettings.vesselname;
-    json["vesseltype"] = stationSettings.vesseltype;
-    json["loa"] = stationSettings.loa;
-    json["beam"] = stationSettings.beam;
-    json["portoffset"] = stationSettings.portoffset;
-    json["bowoffset"] = stationSettings.bowoffset;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-}
-
-void handleSystem(AsyncWebServerRequest *request) {
-    AsyncResponseStream *response =
-        request->beginResponseStream("application/json");
-    DynamicJsonDocument json(1024);
-
-    json["hardwareRevision"] = systemSettings.hardwareRevision;
-    json["firmwareRevision"] = systemSettings.firmwareRevision;
-    json["serialNumber"] = systemSettings.serialNumber;
-    json["MCUtype"] = systemSettings.MCUtype;
-    json["breakoutGeneration"] = systemSettings.breakoutGeneration;
-    json["bootloader"] = systemSettings.bootloader;
-
-    serializeJson(json, *response);
-    addOptionalCORSHeader(response);
-    request->send(response);
-    systemRefreshPending = true;
-}
-
-void notFound(AsyncWebServerRequest *request) {
-    request->send(404, "text/plain", "Not found");
-}
-
-void setupWebServer() {
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/index.html", "text/html");
-    });
-
-    server.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/config.html", "text/html");
-    });
-
-    server.on("/dashboard.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/dashboard.html", "text/html");
-    });
-    //    server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
-    server.serveStatic("/js", SPIFFS, "/js/");
-
-    // GET request /info
-    server.on("/info", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleInfo(request); });
-
-    // GET request /txstate
-    server.on("/txstate", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleTXstate(request); });
-
-    // GET request /scan
-    server.on("/scan", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleScan(request); });
-
-    // GET request /wifi
-    server.on("/wifi", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleWifi(request); });
-
-    // GET request /protocol
-    server.on("/protocol", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleProtocol(request); });
-
-    // GET request /station
-    server.on("/station", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleStation(request); });
-
-    // GET request /system
-    server.on("/system", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleSystem(request); });
-
-    // GET request /app
-    server.on("/app", HTTP_GET,
-              [](AsyncWebServerRequest *request) { handleApp(request); });
-
-    server.onNotFound(notFound);
-}
-
-void startWebServer() {
-    if (networkOK) {
-        setupWebServer();
-        setupOTA(&server);
-        server.begin();
-        Serial.println("Webserver started");
-        if (mDNSOK) {
-            MDNS.addService("_http", "_tcp", 80);
-        }
-        initWebSocket();
-    }
-}
-
-void stopWebServer() {
-    if (mDNSOK) {
-        mdns_service_remove("_http", "_tcp");
-    }
-    server.end();
-    Serial.println("Webserver stopped");
-}
 
 static void handleData(void *arg, AsyncClient *client, void *data, size_t len) {
     Serial.printf("Data received from TCP client %s :",
@@ -1342,35 +895,6 @@ void sendHistoryWSChuncked(uint32_t client, long msgId) {
     ws_queue_client = 0;
 #endif
 }
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
-             AwsEventType type, void *arg, uint8_t *data, size_t len) {
-    switch (type) {
-        case WS_EVT_CONNECT:
-#ifdef AISMEMORY
-            ws_queue_client = client->id();
-            ws_queue_msgId = 0;
-            ws_queue_loop = millis();
-#endif
-            break;
-        case WS_EVT_DISCONNECT:
-            Serial.printf("WebSocket client #%u disconnected\n", client->id());
-            break;
-        case WS_EVT_DATA:
-            // handleWebSocketMessage(arg, data, len);
-            break;
-        case WS_EVT_PONG:
-            Serial.printf("WebSocket client #%u pong\n", client->id());
-            break;
-        case WS_EVT_ERROR:
-            Serial.printf("WebSocket client #%u event error:\n", client->id());
-            break;
-    }
-}
-
-void initWebSocket() {
-    ws.onEvent(onEvent);
-    server.addHandler(&ws);
-}
 
 void systemRefresh(){
     Serial2.print("sys?\r\n");
@@ -1403,7 +927,7 @@ void setup() {
     setupFileSystem();
     setupConfigWiFi();
     // startConfigWiFi();
-    // setupWebServer();
+    setupWebServer();
     readWifiFromFile();
     infoState.wifiReconnects = 0;
     bool wifidetails = loadWifiSettings();
